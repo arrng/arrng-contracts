@@ -1,0 +1,31 @@
+{
+  "name": "arrng-contracts",
+  "version": "1.0.0",
+  "description": "arrng code contracts",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/arrng/arrng-contracts.git"
+  },
+  "author": "eps",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/arrng/arrng-contracts/issues"
+  },
+  "homepage": "https://github.com/arrng/arrng-contracts#readme",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^2.0.2",
+    "@openzeppelin/contracts": "^4.8.3",
+    "hardhat": "^2.13.0",
+    "merkletreejs": "^0.3.10"
+  },
+  "dependencies": {
+    "@arrng/contracts": "^1.1.0",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
+    "dotenv": "^16.0.3",
+    "hardhat-etherscan-abi": "^0.3.0"
+  }
+}

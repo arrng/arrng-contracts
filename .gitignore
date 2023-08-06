@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+/build
+.env
+arweave_keys
+tmp
+yarn.lock
+/artifacts
+/cache
+/data
+/deployment

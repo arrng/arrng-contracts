@@ -30,8 +30,19 @@ module.exports = {
       optimisticEthereum: OPTIMISM_API_KEY,
       polygonMumbai: POLYGONSCAN_API_KEY,
       polygon: POLYGONSCAN_API_KEY,
+      blast_sepolia: "blast_sepolia", // apiKey is not required, just set a placeholder
     },
-    customChains: [],
+    customChains: [
+      {
+        network: "blast_sepolia",
+        chainId: 168587773,
+        urls: {
+          apiURL:
+            "https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan",
+          browserURL: "https://testnet.blastscan.io",
+        },
+      },
+    ],
   },
 
   networks: {
@@ -73,6 +84,10 @@ module.exports = {
       chainId: 137,
       //gasPrice: 55 * 1_000_000_000, // gwei
       //accounts: [`0x${MAINNET_PRIVATE_KEY}`],
+    },
+    blast_sepolia: {
+      url: "https://sepolia.blast.io",
+      chainId: 168587773,
     },
   },
 

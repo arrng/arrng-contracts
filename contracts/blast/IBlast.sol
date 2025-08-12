@@ -8,7 +8,7 @@
  *
  */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.24;
 
 import {YieldMode, GasMode} from "./BlastModes.sol";
 

@@ -14,7 +14,7 @@
  *
  */
 
-pragma solidity 0.8.19;
+pragma solidity 0.8.24;
 
 import {IArrngController} from "./IArrngController.sol";
 import {IArrngConsumer} from "../consumer/IArrngConsumer.sol";

@@ -11,7 +11,7 @@
 import {IArrngConsumer} from "./IArrngConsumer.sol";
 import {IArrngController} from "../controller/IArrngController.sol";
 
-pragma solidity 0.8.19;
+pragma solidity ^0.8.0;
 
 abstract contract ArrngConsumer is IArrngConsumer {
   IArrngController public immutable arrngController;

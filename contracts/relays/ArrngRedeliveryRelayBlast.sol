@@ -13,7 +13,7 @@ import {YieldMode, GasMode, IBlast} from "../blast/IBlast.sol";
 import {IWETHUSDBRebasing} from "../blast/IWETHUSDBRebasing.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-pragma solidity 0.8.24;
+pragma solidity ^0.8.0;
 
 contract ArrngRedeliveryRelay is IArrngRedeliveryRelay, Ownable {
   // Address of the oracle:

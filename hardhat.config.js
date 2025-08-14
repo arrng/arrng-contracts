@@ -19,6 +19,8 @@ const {
   POLY_MUMBAI_ALCHEMY_API_KEY,
 } = process.env
 
+const BLESSNET_API_KEY = process.env.ETHERSCAN_API_KEY || "" // no api key required, so just use this for now.
+
 module.exports = {
   etherscan: {
     apiKey: {
@@ -31,6 +33,8 @@ module.exports = {
       polygonMumbai: POLYGONSCAN_API_KEY,
       polygon: POLYGONSCAN_API_KEY,
       blast_sepolia: "blast_sepolia", // apiKey is not required, just set a placeholder
+      blessnet: BLESSNET_API_KEY,
+      blessnetSepolia: BLESSNET_API_KEY,
     },
     customChains: [
       {
@@ -40,6 +44,22 @@ module.exports = {
           apiURL:
             "https://api.routescan.io/v2/network/testnet/evm/168587773/etherscan",
           browserURL: "https://testnet.blastscan.io",
+        },
+      },
+      {
+        network: "blessnet",
+        chainId: 45513,
+        urls: {
+          apiURL: "https://blessnet.calderaexplorer.xyz/api",
+          browserURL: "https://scan.bless.net/",
+        },
+      },
+      {
+        network: "blessnetSepolia",
+        chainId: 11145513,
+        urls: {
+          apiURL: "https://blessnet-sepolia-testnet.explorer.caldera.xyz/api",
+          browserURL: "https://blessnet-sepolia-testnet.explorer.caldera.xyz/",
         },
       },
     ],
@@ -88,6 +108,14 @@ module.exports = {
     blast_sepolia: {
       url: "https://sepolia.blast.io",
       chainId: 168587773,
+    },
+    blessnet_sepolia: {
+      url: `https://blessnet-sepolia-testnet.rpc.caldera.xyz/http`,
+      chainId: 11145513,
+    },
+    blessnet: {
+      url: `https://blessnet.calderachain.xyz/http`,
+      chainId: 45513,
     },
   },
 

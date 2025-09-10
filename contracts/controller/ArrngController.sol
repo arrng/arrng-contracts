@@ -759,7 +759,11 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
   function requestRedelivery(
     uint256 arrngRequestId_,
     address refundAddress_
-  ) public payable onlyUnserved(arrngRequestId_) {
+  ) public payable {
+    require(
+      !randomnessServedForRequest[arrngRequestId_],
+      "Request already served"
+    );
     // Forward funds to the oracle:
     (bool success, ) = oracleAddress.call{value: msg.value}("");
     require(success, "Error requesting redelivery");

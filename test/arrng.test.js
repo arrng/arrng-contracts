@@ -15,6 +15,7 @@ describe("Arng Controller", function () {
   let hhMockERC20
   let hhMockERC721
   let hhMockConsumer
+  let hhMockUnpayable
 
   const prerevealURI = "www.prereveal-uri.com"
   const revealedURI = "www.revealed-uri.com/"
@@ -38,6 +39,9 @@ describe("Arng Controller", function () {
       revealedURI,
       hhArrngController.address,
     )
+
+    const mockUnpayable = await ethers.getContractFactory("MockUnpayable")
+    hhMockUnpayable = await mockUnpayable.deploy()
   })
 
   context("ArrngController", function () {
@@ -104,6 +108,22 @@ describe("Arng Controller", function () {
         ).to.not.be.reverted
 
         expect(await hhArrngController.maximumNumberOfNumbers()).to.equal(5000)
+      })
+
+      it("setMaximumRangeValue - Non-owner cannot call", async () => {
+        await expect(
+          hhArrngController.connect(addr1).setMaximumRangeValue(5000),
+        ).to.be.revertedWith("Ownable: caller is not the owner")
+      })
+
+      it("setMaximumRangeValue - Owner can call", async () => {
+        expect(await hhArrngController.maximumRangeValue()).to.equal(1000000000)
+
+        await expect(
+          hhArrngController.connect(owner).setMaximumRangeValue(999999999),
+        ).to.not.be.reverted
+
+        expect(await hhArrngController.maximumRangeValue()).to.equal(999999999)
       })
 
       it("setOracleAddress - Non-owner cannot call", async () => {
@@ -225,8 +245,83 @@ describe("Arng Controller", function () {
         await expect(
           hhArrngController.connect(addr1)["requestRandomWords(uint256)"](2),
         ).to.be.revertedWith(
-          "Insufficient native token for gas, minimum is 1000000000000000. You may need more depending on the number of numbers requested and prevailing gas cost. All excess refunded, less txn fee.",
+          "Insufficient token for gas, minimum is 1000000000000000. You may need more depending on the numbers requested and prevailing gas cost. All excess refunded, less txn fee.",
         )
+      })
+
+      it("Cannot request 0 numbers", async () => {
+        await expect(
+          hhArrngController
+            .connect(addr1)
+            ["requestRandomWords(uint256)"](0, { value: "1000000000000000" }),
+        ).to.be.revertedWith("Must request more than 0 numbers")
+      })
+
+      it("Cannot request more than max amount of numbers", async () => {
+        await expect(
+          hhArrngController
+            .connect(addr1)
+            ["requestRandomWords(uint256)"](9999, {
+              value: "1000000000000000",
+            }),
+        ).to.be.revertedWith("Request exceeds maximum number of numbers")
+      })
+
+      it("Cannot request an invalid number range", async () => {
+        await expect(
+          hhArrngController
+            .connect(addr1)
+            ["requestRandomNumbersInRange(uint256,uint256,uint256)"](1, 10, 9, {
+              value: "1000000000000000",
+            }),
+        ).to.be.revertedWith("Invalid range")
+      })
+
+      it("Cannot request a too large a max number", async () => {
+        await expect(
+          hhArrngController
+            .connect(addr1)
+            ["requestRandomNumbersInRange(uint256,uint256,uint256)"](
+              1,
+              0,
+              1000000001,
+              { value: "1000000000000000" },
+            ),
+        ).to.be.revertedWith("Max value cannot exceed 999999999")
+      })
+
+      it("Cannot generate more unique numbers than available in the range", async () => {
+        await expect(
+          hhArrngController
+            .connect(addr1)
+            [
+              "requestNonRepeatingRandomNumbersInRange(uint256,uint256,uint256)"
+            ](11, 1, 10, {
+              value: "1000000000000000",
+            }),
+        ).to.be.revertedWith(
+          "Cannot generate more unique numbers than available in the range",
+        )
+      })
+
+      it("Payments to unpayable addresses revert", async () => {
+        await expect(
+          hhArrngController
+            .connect(owner)
+            .setOracleAddress(hhMockUnpayable.address),
+        ).to.not.be.reverted
+
+        await expect(
+          hhArrngController.connect(addr1)["requestRedelivery(uint256)"](999, {
+            value: "1000000000000000",
+          }),
+        ).to.be.revertedWith(
+          "The transfer failed. Recipient: 0xdc64a140aa3e981100a9beca4e685f962f0cf6c9, Amount: 1000000000000000",
+        )
+
+        await expect(
+          hhArrngController.connect(owner).setOracleAddress(mockOracle.address),
+        ).to.not.be.reverted
       })
     })
 
@@ -253,6 +348,28 @@ describe("Arng Controller", function () {
         await expect(
           hhMockConsumer.connect(owner).reveal({ value: "1000000000000000" }),
         ).to.not.be.reverted
+      })
+
+      it("Cannot receive randomness from non-oracle", async () => {
+        // No service, mock response
+        await expect(
+          hhArrngController
+            .connect(addr1)
+            .serveRandomness(
+              1,
+              hhMockConsumer.address,
+              ethers.constants.HashZero,
+              0,
+              [
+                "62308597009000072040301731319126922416297638952066202699291105688555561071479",
+              ],
+              owner.address,
+              "",
+              "",
+              0,
+              { value: "990000000000000" },
+            ),
+        ).to.be.revertedWith("Oracle address only")
       })
 
       it("Can receive randomness", async () => {
@@ -299,6 +416,28 @@ describe("Arng Controller", function () {
         expect(await hhMockConsumer.tokenURI(2)).to.equal(
           revealedURI + "81.json",
         )
+      })
+
+      it("Cannot receive randomness if already served", async () => {
+        // No service, mock response
+        await expect(
+          hhArrngController
+            .connect(mockOracle)
+            .serveRandomness(
+              1,
+              hhMockConsumer.address,
+              ethers.constants.HashZero,
+              0,
+              [
+                "62308597009000072040301731319126922416297638952066202699291105688555561071479",
+              ],
+              owner.address,
+              "",
+              "",
+              0,
+              { value: "990000000000000" },
+            ),
+        ).to.be.revertedWith("Request already served")
       })
     })
   })

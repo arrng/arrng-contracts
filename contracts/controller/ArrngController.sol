@@ -50,6 +50,8 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
   // name to this contract:
   IENSReverseRegistrar public ensReverseRegistrar;
 
+  mapping(uint256 => bool) public randomnessServedForRequest;
+
   /**
    *
    * @dev constructor
@@ -60,6 +62,26 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
   constructor(address owner_) {
     _transferOwnership(owner_);
     maximumNumberOfNumbers = 100;
+  }
+
+  /**
+   * @dev onlyOracle:  Only allow calls from the oracle address
+   */
+  modifier onlyOracle() {
+    require(msg.sender == oracleAddress, "Oracle address only");
+    _;
+  }
+
+  /**
+   * @dev onlyUnserved: Prevent multiple successful deliveries for the same request ID
+   */
+  modifier onlyUnserved(uint256 arrngRequestId_) {
+    require(
+      !randomnessServedForRequest[arrngRequestId_],
+      "Request already served"
+    );
+    randomnessServedForRequest[arrngRequestId_] = true;
+    _;
   }
 
   /**
@@ -278,6 +300,10 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
    * call it without explicitly declaring a refund address, with the
    * refund being paid to the tx.origin for this call.
    *
+   * Important: The array of numbers returned is NOT guaranteed to be non-repeating.
+   * i.e. duplicates are possible in the returned array. If you need non-repeating numbers,
+   * use requestNonRepeatingRandomNumbersInRange instead.
+   *
    * @param numberOfNumbers_: the amount of numbers to request
    * @param minValue_: the min of the range
    * @param maxValue_: the max of the range
@@ -305,6 +331,10 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
    * requestRandomNumbersInRange is overloaded. In this instance you must
    * specify the refund address for unused native token.
    *
+   * Important: The array of numbers returned is NOT guaranteed to be non-repeating.
+   * i.e. duplicates are possible in the returned array. If you need non-repeating numbers,
+   * use requestNonRepeatingRandomNumbersInRange instead.
+   *
    * @param numberOfNumbers_: the amount of numbers to request
    * @param minValue_: the min of the range
    * @param maxValue_: the max of the range
@@ -325,6 +355,66 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
         maxValue_,
         refundAddress_,
         1
+      );
+  }
+
+  /**
+   *
+   * @dev requestNonRepeatingRandomNumbersInRange: request 1 to n integers within
+   * a given range (e.g. 1 to 10,000) where the numbers returned are non-repeating
+   * i.e. no duplicates are possible in the returned array.
+   * requestNonRepeatingRandomNumbersInRange is overloaded. In this instance you can
+   * call it without explicitly declaring a refund address, with the
+   * refund being paid to the tx.origin for this call.
+   *
+   * @param numberOfNumbers_: the amount of numbers to request
+   * @param minValue_: the min of the range
+   * @param maxValue_: the max of the range
+   *
+   * @return uniqueID_ : unique ID for this request
+   */
+  function requestNonRepeatingRandomNumbersInRange(
+    uint256 numberOfNumbers_,
+    uint256 minValue_,
+    uint256 maxValue_
+  ) public payable returns (uint256 uniqueID_) {
+    return
+      requestNonRepeatingRandomNumbersInRange(
+        numberOfNumbers_,
+        minValue_,
+        maxValue_,
+        tx.origin
+      );
+  }
+
+  /**
+   *
+   * @dev requestNonRepeatingRandomNumbersInRange: request 1 to n integers within
+   * a given range (e.g. 1 to 10,000) where the numbers returned are non-repeating
+   * i.e. no duplicates are possible in the returned array.
+   * requestNonRepeatingRandomNumbersInRange is overloaded. In this instance you must
+   * specify the refund address for unused native token.
+   *
+   * @param numberOfNumbers_: the amount of numbers to request
+   * @param minValue_: the min of the range
+   * @param maxValue_: the max of the range
+   * @param refundAddress_: the address for refund of native token
+   *
+   * @return uniqueID_ : unique ID for this request
+   */
+  function requestNonRepeatingRandomNumbersInRange(
+    uint256 numberOfNumbers_,
+    uint256 minValue_,
+    uint256 maxValue_,
+    address refundAddress_
+  ) public payable returns (uint256 uniqueID_) {
+    return
+      requestWithMethod(
+        numberOfNumbers_,
+        minValue_,
+        maxValue_,
+        refundAddress_,
+        2
       );
   }
 
@@ -481,9 +571,7 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
     string calldata apiResponse_,
     string calldata apiSignature_,
     uint256 feeCharged_
-  ) external payable {
-    require(msg.sender == oracleAddress, "Oracle address only");
-
+  ) external payable onlyOracle onlyUnserved(arrngRequestId_) {
     emit ArrngResponse(requestTxnHash_);
 
     if (responseCode_ == 0) {
@@ -592,6 +680,67 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
 
   /**
    *
+   * @dev requestRedelivery: request redelivery of rng. Note that this will
+   * ONLY succeed if the original delivery was not sucessful (e.g. when
+   * requested with insufficient native token for gas).
+   *
+   * The use of this method will have the following outcomes:
+   * - There was no original delivery (request ID not found): no redelivery,
+   * excess native token refunded to the provided refund address
+   * - There was a request and it failed: redelivery of rng as per original
+   * request IF there is sufficient native token on this call. Otherwise, refund
+   * of excess native token.
+   *
+   * requestRedelivery is overloaded. In this instance you can
+   * call it without explicitly declaring a refund address, with the
+   * refund being paid to the msg.sender for this call.
+   *
+   * @param arrngRequestId_: the Id of the original request
+   *
+   */
+  function requestRedelivery(uint256 arrngRequestId_) external payable {
+    requestRedelivery(arrngRequestId_, msg.sender);
+  }
+
+  /**
+   *
+   * @dev requestRedelivery: request redelivery of rng. Note that this will
+   * ONLY succeed if the original delivery was not sucessful (e.g. when
+   * requested with insufficient native token for gas).
+   *
+   * The use of this method will have the following outcomes:
+   * - There was no original delivery (request ID not found): no redelivery,
+   * excess native token refunded to the provided refund address
+   * - There was a request and it failed: redelivery of rng as per original
+   * request IF there is sufficient native token on this call. Otherwise, refund
+   * of excess native token.
+   *
+   * requestRedelivery is overloaded. In this instance you must
+   * specify the refund address for unused native token.
+   *
+   * @param arrngRequestId_: the Id of the original request
+   * @param refundAddress_: the address for refund of ununsed native token
+   *
+   */
+  function requestRedelivery(
+    uint256 arrngRequestId_,
+    address refundAddress_
+  ) public payable onlyUnserved(arrngRequestId_) {
+    // Forward funds to the oracle:
+    (bool success, ) = oracleAddress.call{value: msg.value}("");
+    require(success, "Error requesting redelivery");
+
+    // Request redelivery:
+    emit ArrngRedeliveryRequest(
+      uint64(arrngRequestId_),
+      msg.sender,
+      uint96(msg.value),
+      refundAddress_
+    );
+  }
+
+  /**
+   *
    * @dev _processPayment: central function for payment processing
    *
    * @param payeeAddress_: address to pay.
@@ -600,6 +749,6 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
    */
   function _processPayment(address payeeAddress_, uint256 amount_) internal {
     (bool success, ) = payeeAddress_.call{value: amount_}("");
-    require(success, "TheTransferWalkedThePlank!(failed)");
+    require(success, "The transfer failed)");
   }
 }

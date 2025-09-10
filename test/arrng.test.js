@@ -255,6 +255,28 @@ describe("Arng Controller", function () {
         ).to.not.be.reverted
       })
 
+      it("Cannot receive randomness from non-oracle", async () => {
+        // No service, mock response
+        await expect(
+          hhArrngController
+            .connect(addr1)
+            .serveRandomness(
+              1,
+              hhMockConsumer.address,
+              ethers.constants.HashZero,
+              0,
+              [
+                "62308597009000072040301731319126922416297638952066202699291105688555561071479",
+              ],
+              owner.address,
+              "",
+              "",
+              0,
+              { value: "990000000000000" },
+            ),
+        ).to.be.revertedWith("Oracle address only")
+      })
+
       it("Can receive randomness", async () => {
         const initialBalance = await ethers.provider.getBalance(owner.address)
 
@@ -299,6 +321,28 @@ describe("Arng Controller", function () {
         expect(await hhMockConsumer.tokenURI(2)).to.equal(
           revealedURI + "81.json",
         )
+      })
+
+      it("Cannot receive randomness if already served", async () => {
+        // No service, mock response
+        await expect(
+          hhArrngController
+            .connect(mockOracle)
+            .serveRandomness(
+              1,
+              hhMockConsumer.address,
+              ethers.constants.HashZero,
+              0,
+              [
+                "62308597009000072040301731319126922416297638952066202699291105688555561071479",
+              ],
+              owner.address,
+              "",
+              "",
+              0,
+              { value: "990000000000000" },
+            ),
+        ).to.be.revertedWith("Request already served")
       })
     })
   })

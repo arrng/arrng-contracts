@@ -3,14 +3,12 @@
 **A library to implement arrng for verifiable rng in blockchain apps.** aarng implements an oracle to serve signed randomness from random.org to a number of chains, including:
 
 - mainnet
+- blessnet
 - arbitrum one
 - optimism
 - polygon
-- eth goerli
 - eth sepolia
-- arbitrum goerli
-- optimism goerli
-- polygon mumbai
+- blessnet sepolia
 
 For more details please see https://www.arrng.io/.
 

@@ -15,6 +15,7 @@ interface IArrngController {
   event ENSNameSet(string ensName, bytes32 ensNameHash);
   event MinimumNativeTokenSet(uint256 minimumNativeToken);
   event MaximumNumberOfNumbersSet(uint256 newNumberLimited);
+  event MaximumRangeValueSet(uint256 newRangeValue);
   event OracleAddressSet(address oracle);
   event TreasuryAddressSet(address treasury);
   event ArrngRequest(
@@ -78,7 +79,7 @@ interface IArrngController {
    * @param minNativeToken_: the new minimum native token per call
    *
    */
-  function setMinimumNativeToken(uint176 minNativeToken_) external;
+  function setMinimumNativeToken(uint128 minNativeToken_) external;
 
   /**
    *

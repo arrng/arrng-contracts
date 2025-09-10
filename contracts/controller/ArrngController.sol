@@ -26,19 +26,23 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ArrngController is IArrngController, Ownable, IERC721Receiver {
-  using Strings for uint176;
+  using Strings for uint128;
+  using Strings for uint48;
 
   // Minimum native token required for gas cost to serve RNG. Note that more
   // token for gas will be required, depending on prevailing gas conditions.
   // Excess token is refunded. An up to date estimate of native token required
   // for gas can be obtained from the api.arrng.io. See arrng.io for more details.
-  uint176 public minimumNativeToken;
+  uint128 public minimumNativeToken;
 
   // Request ID:
   uint64 public arrngRequestId;
 
   // Limit on number of returned numbers:
   uint16 public maximumNumberOfNumbers;
+
+  // Limit on maximum value for a range:
+  uint48 public maximumRangeValue;
 
   // Address of the oracle:
   address payable public oracleAddress;
@@ -62,6 +66,7 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
   constructor(address owner_) {
     _transferOwnership(owner_);
     maximumNumberOfNumbers = 100;
+    maximumRangeValue = 1000000000;
   }
 
   /**
@@ -123,7 +128,7 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
    * @param minNativeToken_: the new minimum native token per call
    *
    */
-  function setMinimumNativeToken(uint176 minNativeToken_) external onlyOwner {
+  function setMinimumNativeToken(uint128 minNativeToken_) external onlyOwner {
     minimumNativeToken = minNativeToken_;
     emit MinimumNativeTokenSet(minNativeToken_);
   }
@@ -140,6 +145,18 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
   ) external onlyOwner {
     maximumNumberOfNumbers = maxNumbersPerTxn_;
     emit MaximumNumberOfNumbersSet(maxNumbersPerTxn_);
+  }
+
+  /**
+   *
+   * @dev setMaximumRangeValue: set the max number for a range request.
+   *
+   * @param maxRangeValue_: the new max range value
+   *
+   */
+  function setMaximumRangeValue(uint48 maxRangeValue_) external onlyOwner {
+    maximumRangeValue = maxRangeValue_;
+    emit MaximumRangeValueSet(maxRangeValue_);
   }
 
   /**
@@ -408,6 +425,16 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
     uint256 maxValue_,
     address refundAddress_
   ) public payable returns (uint256 uniqueID_) {
+    // Validate that the request isn't requesting more unique numbers
+    // that fit within the range. We add one to maxValue - minValue as the
+    // range is inclusive of both the start and end integer. For example, the
+    // range 1 to 5 refers to 5 possible unique number (1,2,3,4,5), not
+    // 5 - 1 (i.e. 4)
+    require(
+      numberOfNumbers_ <= ((maxValue_ - minValue_) + 1),
+      "Cannot generate more unique numbers than available in the range"
+    );
+
     return
       requestWithMethod(
         numberOfNumbers_,
@@ -514,20 +541,27 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
       arrngRequestId += 1;
     }
 
-    if (payment_ < minimumNativeToken) {
-      string memory message = string.concat(
-        "Insufficient native token for gas, minimum is ",
+    require(
+      payment_ >= minimumNativeToken,
+      string.concat(
+        "Insufficient token for gas, minimum is ",
         minimumNativeToken.toString(),
-        ". You may need more depending on the number of numbers requested and prevailing gas cost. All excess refunded, less txn fee."
-      );
-      require(payment_ >= minimumNativeToken, message);
-    }
+        ". You may need more depending on the numbers requested and prevailing gas cost. All excess refunded, less txn fee."
+      )
+    );
 
     require(numberOfNumbers_ > 0, "Must request more than 0 numbers");
 
     require(
       numberOfNumbers_ <= maximumNumberOfNumbers,
       "Request exceeds maximum number of numbers"
+    );
+
+    require(maxValue_ >= minValue_, "Invalid range");
+
+    require(
+      maxValue_ <= maximumRangeValue,
+      string.concat("Max value cannot exceed ", maximumRangeValue.toString())
     );
 
     _processPayment(oracleAddress, payment_);
@@ -571,7 +605,7 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
     string calldata apiResponse_,
     string calldata apiSignature_,
     uint256 feeCharged_
-  ) external payable onlyOracle onlyUnserved(arrngRequestId_) {
+  ) external payable onlyOracle {
     emit ArrngResponse(requestTxnHash_);
 
     if (responseCode_ == 0) {
@@ -625,7 +659,7 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
     string calldata apiSignature_,
     uint256 refundAmount_,
     uint256 feeCharged_
-  ) internal {
+  ) internal onlyUnserved(arrngRequestId_) {
     // Success
     emit ArrngServed(
       uint128(arrngRequestId_),

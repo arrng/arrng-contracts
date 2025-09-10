@@ -28,6 +28,8 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 contract ArrngController is IArrngController, Ownable, IERC721Receiver {
   using Strings for uint128;
   using Strings for uint48;
+  using Strings for uint256;
+  using Strings for address;
 
   // Minimum native token required for gas cost to serve RNG. Note that more
   // token for gas will be required, depending on prevailing gas conditions.
@@ -765,8 +767,7 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
       "Request already served"
     );
     // Forward funds to the oracle:
-    (bool success, ) = oracleAddress.call{value: msg.value}("");
-    require(success, "Error requesting redelivery");
+    _processPayment(oracleAddress, msg.value);
 
     // Request redelivery:
     emit ArrngRedeliveryRequest(
@@ -787,6 +788,14 @@ contract ArrngController is IArrngController, Ownable, IERC721Receiver {
    */
   function _processPayment(address payeeAddress_, uint256 amount_) internal {
     (bool success, ) = payeeAddress_.call{value: amount_}("");
-    require(success, "The transfer failed)");
+    require(
+      success,
+      string.concat(
+        "The transfer failed. Recipient: ",
+        payeeAddress_.toHexString(),
+        ", Amount: ",
+        amount_.toString()
+      )
+    );
   }
 }

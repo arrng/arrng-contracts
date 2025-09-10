@@ -15,6 +15,7 @@ describe("Arng Controller", function () {
   let hhMockERC20
   let hhMockERC721
   let hhMockConsumer
+  let hhMockUnpayable
 
   const prerevealURI = "www.prereveal-uri.com"
   const revealedURI = "www.revealed-uri.com/"
@@ -38,6 +39,9 @@ describe("Arng Controller", function () {
       revealedURI,
       hhArrngController.address,
     )
+
+    const mockUnpayable = await ethers.getContractFactory("MockUnpayable")
+    hhMockUnpayable = await mockUnpayable.deploy()
   })
 
   context("ArrngController", function () {
@@ -298,6 +302,26 @@ describe("Arng Controller", function () {
         ).to.be.revertedWith(
           "Cannot generate more unique numbers than available in the range",
         )
+      })
+
+      it("Payments to unpayable addresses revert", async () => {
+        await expect(
+          hhArrngController
+            .connect(owner)
+            .setOracleAddress(hhMockUnpayable.address),
+        ).to.not.be.reverted
+
+        await expect(
+          hhArrngController.connect(addr1)["requestRedelivery(uint256)"](999, {
+            value: "1000000000000000",
+          }),
+        ).to.be.revertedWith(
+          "The transfer failed. Recipient: 0xdc64a140aa3e981100a9beca4e685f962f0cf6c9, Amount: 1000000000000000",
+        )
+
+        await expect(
+          hhArrngController.connect(owner).setOracleAddress(mockOracle.address),
+        ).to.not.be.reverted
       })
     })
 

@@ -92,6 +92,15 @@ interface IArrngController {
 
   /**
    *
+   * @dev setMaximumRangeValue: set the max number for a range request.
+   *
+   * @param maxRangeValue_: the new max range value
+   *
+   */
+  function setMaximumRangeValue(uint48 maxRangeValue_) external;
+
+  /**
+   *
    * @dev setOracleAddress: set a new oracle address
    *
    * @param oracle_: the new oracle address
@@ -186,6 +195,10 @@ interface IArrngController {
    * call it without explicitly declaring a refund address, with the
    * refund being paid to the tx.origin for this call.
    *
+   * Important: The array of numbers returned is NOT guaranteed to be non-repeating.
+   * i.e. duplicates are possible in the returned array. If you need non-repeating numbers,
+   * use requestNonRepeatingRandomNumbersInRange instead.
+   *
    * @param numberOfNumbers_: the amount of numbers to request
    * @param minValue_: the min of the range
    * @param maxValue_: the max of the range
@@ -205,6 +218,10 @@ interface IArrngController {
    * requestRandomNumbersInRange is overloaded. In this instance you must
    * specify the refund address for unused native token.
    *
+   * Important: The array of numbers returned is NOT guaranteed to be non-repeating.
+   * i.e. duplicates are possible in the returned array. If you need non-repeating numbers,
+   * use requestNonRepeatingRandomNumbersInRange instead.
+   *
    * @param numberOfNumbers_: the amount of numbers to request
    * @param minValue_: the min of the range
    * @param maxValue_: the max of the range
@@ -212,8 +229,50 @@ interface IArrngController {
    *
    * @return uniqueID_ : unique ID for this request
    */
-
   function requestRandomNumbersInRange(
+    uint256 numberOfNumbers_,
+    uint256 minValue_,
+    uint256 maxValue_,
+    address refundAddress_
+  ) external payable returns (uint256 uniqueID_);
+
+  /**
+   *
+   * @dev requestNonRepeatingRandomNumbersInRange: request 1 to n integers within
+   * a given range (e.g. 1 to 10,000) where the numbers returned are non-repeating
+   * i.e. no duplicates are possible in the returned array.
+   * requestNonRepeatingRandomNumbersInRange is overloaded. In this instance you can
+   * call it without explicitly declaring a refund address, with the
+   * refund being paid to the tx.origin for this call.
+   *
+   * @param numberOfNumbers_: the amount of numbers to request
+   * @param minValue_: the min of the range
+   * @param maxValue_: the max of the range
+   *
+   * @return uniqueID_ : unique ID for this request
+   */
+  function requestNonRepeatingRandomNumbersInRange(
+    uint256 numberOfNumbers_,
+    uint256 minValue_,
+    uint256 maxValue_
+  ) external payable returns (uint256 uniqueID_);
+
+  /**
+   *
+   * @dev requestNonRepeatingRandomNumbersInRange: request 1 to n integers within
+   * a given range (e.g. 1 to 10,000) where the numbers returned are non-repeating
+   * i.e. no duplicates are possible in the returned array.
+   * requestNonRepeatingRandomNumbersInRange is overloaded. In this instance you must
+   * specify the refund address for unused native token.
+   *
+   * @param numberOfNumbers_: the amount of numbers to request
+   * @param minValue_: the min of the range
+   * @param maxValue_: the max of the range
+   * @param refundAddress_: the address for refund of native token
+   *
+   * @return uniqueID_ : unique ID for this request
+   */
+  function requestNonRepeatingRandomNumbersInRange(
     uint256 numberOfNumbers_,
     uint256 minValue_,
     uint256 maxValue_,
